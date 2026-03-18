@@ -51,7 +51,6 @@ export default function AuditLogPage() {
   const [filterAkcija, setFilterAkcija] = useState<string>('');
   const [filterEntitetTip, setFilterEntitetTip] = useState<string>('');
 
-  const isAdmin = user?.role === 'admin';
   const logsPerPage = 50;
 
   useEffect(() => {
@@ -123,9 +122,6 @@ export default function AuditLogPage() {
       return timestamp;
     }
   };
-
-  const uniqueAkcije = [...new Set(logs.map(log => log.akcija))].filter(Boolean);
-  const uniqueEntiteti = [...new Set(logs.map(log => log.entitet_tip))].filter(Boolean);
 
   if (loading && logs.length === 0) {
     return (

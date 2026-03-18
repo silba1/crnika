@@ -6,7 +6,6 @@ import type {
   Gost,
   StoloviRezervacija,
   Rezervacija,
-  CijenaApartmana,
   Stats,
   Modul,
   LoginCredentials,

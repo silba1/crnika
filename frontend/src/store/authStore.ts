@@ -107,7 +107,7 @@ export const useAuthStore = create<AuthState>()(
                 ime: user.ime,
                 email: user.email,
                 role: user.role,
-                tip_vlasnika: user.tip_vlasnika
+                moduli: user.moduli || []
               },
               isAuthenticated: true,
               isLoading: false 

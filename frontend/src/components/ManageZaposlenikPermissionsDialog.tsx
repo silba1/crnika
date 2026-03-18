@@ -8,7 +8,6 @@ import {
   Box,
   Typography,
   Checkbox,
-  FormControlLabel,
   Table,
   TableBody,
   TableCell,
@@ -21,7 +20,7 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { Vlasnik, Restoran, Apartman, ZaposlenikObjekt } from '../types';
+import { Vlasnik, Restoran, Apartman } from '../types';
 import { api } from '../services/api';
 
 interface Props {
@@ -46,8 +45,8 @@ export default function ManageZaposlenikPermissionsDialog({ open, onClose, zapos
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState(0); // 0=Restorani, 1=Apartmani
   
-  const [restorani, setRestorani] = useState<Restoran[]>([]);
-  const [apartmani, setApartmani] = useState<Apartman[]>([]);
+  const [_restorani, setRestorani] = useState<Restoran[]>([]);
+  const [_apartmani, setApartmani] = useState<Apartman[]>([]);
   const [permissions, setPermissions] = useState<PermissionRow[]>([]);
 
   useEffect(() => {

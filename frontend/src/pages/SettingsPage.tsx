@@ -41,10 +41,10 @@ export default function SettingsPage() {
       setError(null);
       
       // Get JSON data from backend
-      const response = await api.api.get('/export');
+      const data = await api.exportData();
       
       // Create download link
-      const blob = new Blob([JSON.stringify(response.data, null, 2)], { 
+      const blob = new Blob([JSON.stringify(data, null, 2)], { 
         type: 'application/json' 
       });
       const url = window.URL.createObjectURL(blob);
@@ -96,7 +96,7 @@ export default function SettingsPage() {
       const jsonData = JSON.parse(fileContent);
       
       // Send to backend
-      await api.api.post('/import', jsonData);
+      await api.importData(jsonData);
       
       setSuccess('Podaci uspješno importani! Osvježite stranicu.');
       setSelectedFile(null);

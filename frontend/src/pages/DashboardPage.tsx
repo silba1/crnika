@@ -209,9 +209,6 @@ export default function DashboardPage() {
               <Typography variant="body2" color="text.secondary">
                 Uloga: <strong>{user?.role}</strong>
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Tip vlasnika: <strong>{user?.tip_vlasnika}</strong>
-              </Typography>
             </Box>
           </Paper>
         </Grid>

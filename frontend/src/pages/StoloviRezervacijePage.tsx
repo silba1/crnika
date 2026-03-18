@@ -92,7 +92,6 @@ export default function StoloviRezervacijePage() {
     }
   });
 
-  const restoranIdValue = watch('restoran_id');
   const odVremenaValue = watch('od_vremena');
 
   useEffect(() => {
