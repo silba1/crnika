@@ -1,0 +1,52 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+tmp/
+*.egg-info/
+dist/
+build/
+todo.txt
+
+# Virtual environments
+.venv
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+baza_prod*.db
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend
+**/node_modules/
+**/dist/
+**/.next/
+**/build/
+**/.cache/
+**/.parcel-cache/
+**/coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
