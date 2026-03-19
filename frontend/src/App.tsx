@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useAuthStore } from './store/authStore';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -15,6 +16,7 @@ import RezervacijePage from './pages/RezervacijePage';
 import AuditLogPage from './pages/AuditLogPage';
 import SettingsPage from './pages/SettingsPage';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const theme = createTheme({
   palette: {
@@ -36,36 +38,38 @@ function App() {
   }, []); // Run only once on mount
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="vlasnici" element={<VlasniciPage />} />
-            <Route path="apartmani" element={<ApartmaniPage />} />
-            <Route path="restorani" element={<RestoraniPage />} />
-            <Route path="gosti" element={<GostiPage />} />
-            <Route path="stolovi-rezervacije" element={<StoloviRezervacijePage />} />
-            <Route path="rezervacije" element={<RezervacijePage />} />
-            <Route path="audit-log" element={<AuditLogPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="vlasnici" element={<VlasniciPage />} />
+              <Route path="apartmani" element={<ApartmaniPage />} />
+              <Route path="restorani" element={<RestoraniPage />} />
+              <Route path="gosti" element={<GostiPage />} />
+              <Route path="stolovi-rezervacije" element={<StoloviRezervacijePage />} />
+              <Route path="rezervacije" element={<RezervacijePage />} />
+              <Route path="audit-log" element={<AuditLogPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 }
 

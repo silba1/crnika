@@ -14,10 +14,6 @@ from passlib.context import CryptContext
 import secrets
 import os
 from pydantic import BaseModel
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 from models import (
     Vlasnik, VlasnikCreate, VlasnikUpdate, Apartman, Restoran, Gost, 
@@ -29,7 +25,7 @@ from models import (
 )
 
 # OAuth providers
-from auth.google import GoogleOAuthProvider
+from auth import GoogleOAuth
 
 # ============================================
 # APP CONFIGURATION
@@ -102,7 +98,7 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)) -> d
             (credentials.username,)
         ).fetchone()
         
-        if not user:
+        if not user or not pwd_context.verify(credentials.password, user['lozinka']):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
@@ -110,32 +106,6 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)) -> d
             )
         
         user_dict = dict_from_row(user)
-        
-        # Debug OAuth
-        print(f"🔐 DEBUG get_current_user:")
-        print(f"   Email: {credentials.username}")
-        print(f"   Password starts with 'oauth_': {credentials.password.startswith('oauth_')}")
-        print(f"   User auth_provider: {user_dict.get('auth_provider')}")
-        print(f"   User oauth_id: {user_dict.get('oauth_id')}")
-        
-        # Check authentication based on auth_provider
-        if user_dict.get('auth_provider') == 'google':
-            # OAuth users: Accept any password that starts with 'oauth_'
-            # (This is a session token from frontend, not a real password)
-            if not credentials.password.startswith('oauth_'):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid OAuth session",
-                    headers={"X-Error": "OAuth authentication required"}
-                )
-        else:
-            # Password users: Verify password hash
-            if not user_dict.get('lozinka') or not pwd_context.verify(credentials.password, user_dict['lozinka']):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid credentials",
-                    headers={"X-Error": "Invalid email or password"}
-                )
         
         # Fetch user's modules - everyone gets their own modules from vlasnik_moduli
         modules = conn.execute("""
@@ -365,7 +335,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 if not GOOGLE_CLIENT_ID:
     print("⚠️  WARNING: GOOGLE_CLIENT_ID not set. OAuth will not work!")
 
-google_oauth = GoogleOAuthProvider(client_id=GOOGLE_CLIENT_ID) if GOOGLE_CLIENT_ID else None
+google_oauth = GoogleOAuth(client_id=GOOGLE_CLIENT_ID) if GOOGLE_CLIENT_ID else None
 
 
 @app.post("/auth/oauth/google", tags=["Auth"])

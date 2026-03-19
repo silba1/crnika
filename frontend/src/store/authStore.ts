@@ -8,18 +8,21 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  _isCheckingAuth: boolean; // Guard za dupli poziv
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  setUser: (user: AuthUser, isAuthenticated: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      _isCheckingAuth: false,
 
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
@@ -40,7 +43,21 @@ export const useAuthStore = create<AuthState>()(
 
   checkAuth: async () => {
     console.log('🔍 checkAuth started');
-    set({ isLoading: true });
+    
+    // Guard 1: Prevent concurrent checkAuth calls
+    const state = get();
+    if (state._isCheckingAuth) {
+      console.log('⚠️ checkAuth already running, skipping...');
+      return;
+    }
+    
+    // Guard 2: If already authenticated with valid user, skip
+    if (state.isAuthenticated && state.user?.id && state.user?.email) {
+      console.log('✅ Already authenticated, skipping checkAuth');
+      return;
+    }
+    
+    set({ isLoading: true, _isCheckingAuth: true });
     
     // Check if we have persisted user already
     const persistedUser = localStorage.getItem('auth-storage');
@@ -60,7 +77,8 @@ export const useAuthStore = create<AuthState>()(
           set({ 
             user: user, 
             isAuthenticated: true, 
-            isLoading: false 
+            isLoading: false,
+            _isCheckingAuth: false
           });
           return; // ✅ User already loaded from persist
         } else {
@@ -92,7 +110,7 @@ export const useAuthStore = create<AuthState>()(
           if (!Array.isArray(response)) {
             console.error('❌ Invalid response from getVlasnici - not an array:', response);
             api.logout();
-            set({ user: null, isAuthenticated: false, isLoading: false });
+            set({ user: null, isAuthenticated: false, isLoading: false, _isCheckingAuth: false });
             return;
           }
           
@@ -110,27 +128,32 @@ export const useAuthStore = create<AuthState>()(
                 moduli: user.moduli || []
               },
               isAuthenticated: true,
-              isLoading: false 
+              isLoading: false,
+              _isCheckingAuth: false
             });
             console.log('✅ User authenticated successfully');
           } else {
             console.log('❌ User not found in response');
             api.logout();
-            set({ user: null, isAuthenticated: false, isLoading: false });
+            set({ user: null, isAuthenticated: false, isLoading: false, _isCheckingAuth: false });
           }
         } else {
           console.log('❌ No email in localStorage');
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          set({ user: null, isAuthenticated: false, isLoading: false, _isCheckingAuth: false });
         }
       } catch (error) {
         console.error('❌ Failed to fetch user info:', error);
         api.logout();
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({ user: null, isAuthenticated: false, isLoading: false, _isCheckingAuth: false });
       }
     } else {
       console.log('❌ No credentials found');
-      set({ isAuthenticated: false, isLoading: false });
+      set({ isAuthenticated: false, isLoading: false, _isCheckingAuth: false });
     }
+  },
+
+  setUser: (user: AuthUser, isAuthenticated: boolean) => {
+    set({ user, isAuthenticated, isLoading: false, error: null });
   },
 }),
     {

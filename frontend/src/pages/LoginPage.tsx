@@ -10,6 +10,7 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  Divider,
 } from '@mui/material';
 import {
   Visibility,
@@ -17,10 +18,12 @@ import {
   Login as LoginIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
+import { GoogleLoginButton } from '../components/GoogleLoginButton';
+import api from '../services/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, setUser } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,6 +78,43 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleSuccess = async (token: string) => {
+    addDebugLog('Google OAuth token received');
+    setLocalError('');
+    
+    try {
+      const user = await api.googleOAuthLogin(token);
+      addDebugLog('Google login successful!');
+      
+      // Set OAuth session credentials (backend expects Basic Auth with oauth_ password)
+      api.setAuth(user.email, `oauth_${Date.now()}`);
+      
+      // Set user in store
+      setUser(user, true);
+      
+      navigate('/dashboard');
+    } catch (err: any) {
+      addDebugLog('Google login failed');
+      console.error('Google login error:', err);
+      
+      let errorMsg = 'Google prijava nije uspjela.';
+      
+      if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setLocalError(errorMsg);
+    }
+  };
+
+  const handleGoogleError = (error: any) => {
+    addDebugLog('Google OAuth error');
+    console.error('Google OAuth error:', error);
+    setLocalError('Google prijava nije uspjela. Pokušajte ponovno.');
+  };
+
   return (
     <Container component="main" maxWidth="xs">
       <Box
@@ -111,6 +151,21 @@ export default function LoginPage() {
             </Alert>
           )}
 
+          {/* Google OAuth Button */}
+          <Box sx={{ width: '100%', mb: 2 }}>
+            <GoogleLoginButton 
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+            />
+          </Box>
+
+          <Divider sx={{ width: '100%', my: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ili
+            </Typography>
+          </Divider>
+
+          {/* Email/Password Form */}
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
               margin="normal"

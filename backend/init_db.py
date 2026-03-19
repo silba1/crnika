@@ -12,7 +12,7 @@ import sys
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Database path
-DATABASE = "backend/baza_prod1.db"
+DATABASE = "baza_prod1.db"
 
 # Default admin credentials
 DEFAULT_ADMIN_EMAIL = "admin@admin.com"
@@ -47,9 +47,11 @@ def create_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ime TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            lozinka TEXT NOT NULL,
+            lozinka TEXT,
             role TEXT NOT NULL DEFAULT 'vlasnik',
             nadredeni_vlasnik_id INTEGER,
+            auth_provider TEXT DEFAULT 'password',
+            oauth_id TEXT,
             FOREIGN KEY (nadredeni_vlasnik_id) REFERENCES vlasnici (id)
         )
     ''')
@@ -346,9 +348,9 @@ def create_database():
         
         # Create admin (no tip_vlasnika - admin has access to everything)
         c.execute("""
-            INSERT INTO vlasnici (ime, email, lozinka, role)
-            VALUES (?, ?, ?, ?)
-        """, (DEFAULT_ADMIN_NAME, DEFAULT_ADMIN_EMAIL, hashed_password, 'admin'))
+            INSERT INTO vlasnici (ime, email, lozinka, role, auth_provider)
+            VALUES (?, ?, ?, ?, ?)
+        """, (DEFAULT_ADMIN_NAME, DEFAULT_ADMIN_EMAIL, hashed_password, 'admin', 'password'))
         
         admin_id = c.lastrowid
         

@@ -34,8 +34,13 @@ class ApiService {
     const savedEmail = localStorage.getItem('auth_email');
     const savedPassword = localStorage.getItem('auth_password');
     
+    console.log('🔐 ApiService init - savedEmail:', savedEmail, 'savedPassword:', savedPassword ? '***' : null);
+    
     if (savedEmail && savedPassword) {
       this.setAuth(savedEmail, savedPassword);
+      console.log('✅ ApiService credentials loaded from localStorage');
+    } else {
+      console.log('❌ No saved credentials found');
     }
 
     // Request interceptor - add Basic Auth
@@ -45,6 +50,11 @@ class ApiService {
           const token = btoa(`${this.authEmail}:${this.authPassword}`);
           config.headers.Authorization = `Basic ${token}`;
           console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '(authenticated)');
+          console.log('🔐 Auth credentials:', {
+            email: this.authEmail,
+            password: this.authPassword.substring(0, 20) + '...',
+            startsWithOauth: this.authPassword.startsWith('oauth_')
+          });
         } else {
           console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '(NO AUTH)');
         }
@@ -59,10 +69,14 @@ class ApiService {
       (error: AxiosError) => {
         if (error.response?.status === 401) {
           console.error('🚨 401 Unauthorized:', error.config?.url);
+          console.error('🚨 Response data:', error.response?.data);
+          console.error('🚨 Current credentials:', {
+            email: this.authEmail,
+            hasPassword: !!this.authPassword
+          });
           
-          // Don't redirect if this is the login endpoint itself
-          // (let LoginPage handle the error)
-          const isLoginEndpoint = error.config?.url?.includes('/login');
+          // Don't redirect if this is the login/OAuth endpoint
+          const isLoginEndpoint = error.config?.url?.includes('/login') || error.config?.url?.includes('/auth/oauth');
           
           if (!isLoginEndpoint) {
             console.error('🚨 Clearing auth and redirecting to login');
@@ -106,6 +120,26 @@ class ApiService {
       return response.data;
     } catch (error) {
       this.clearAuth();
+      throw error;
+    }
+  }
+
+  // Google OAuth Login
+  async googleOAuthLogin(googleToken: string): Promise<AuthUser> {
+    try {
+      const response = await this.api.post<AuthUser>('/auth/oauth/google', {
+        token: googleToken
+      });
+      
+      // For OAuth users, create a session token (email + random session key)
+      // Backend will recognize email and allow access
+      const user = response.data;
+      const sessionToken = `oauth_${Date.now()}`; // Dummy password for session
+      
+      this.setAuth(user.email, sessionToken);
+      
+      return user;
+    } catch (error) {
       throw error;
     }
   }

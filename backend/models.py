@@ -28,6 +28,14 @@ class StatusRezervacije(str, Enum):
     OTKAZANA = "otkazana"
 
 
+class AuthProvider(str, Enum):
+    """Authentication provider enumeration"""
+    PASSWORD = "password"
+    GOOGLE = "google"
+    FACEBOOK = "facebook"
+    MICROSOFT = "microsoft"
+
+
 
 
 class AuditAkcija(str, Enum):
@@ -134,13 +142,16 @@ class Vlasnik(BaseModel):
     """
     Owner/User model
     Represents admin, owners (vlasnici), and employees (zaposlenici)
+    Supports both password and OAuth authentication
     """
     id: Optional[int] = None
     ime: str = Field(..., min_length=1, max_length=100, description="User name")
     email: EmailStr = Field(..., description="Unique email address")
-    lozinka: Optional[str] = Field(None, min_length=6, description="Password (optional for updates)")
+    lozinka: Optional[str] = Field(None, min_length=6, description="Password (optional for OAuth users)")
     role: Role = Field(..., description="User role")
     nadredeni_vlasnik_id: Optional[int] = Field(None, description="Parent owner ID (for zaposlenici)")
+    auth_provider: AuthProvider = Field(default=AuthProvider.PASSWORD, description="Authentication method")
+    oauth_id: Optional[str] = Field(None, description="OAuth provider user ID (Google ID, Facebook ID, etc.)")
 
     class Config:
         use_enum_values = True
@@ -150,32 +161,41 @@ class Vlasnik(BaseModel):
                 "email": "ivan@example.com",
                 "lozinka": "hashed_password_here",
                 "role": "vlasnik",
-                
+                "auth_provider": "password"
             }
         }
 
 
 class VlasnikCreate(BaseModel):
-    """Model for creating a new Vlasnik - password required"""
+    """Model for creating a new Vlasnik"""
     ime: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    lozinka: str = Field(..., min_length=6, description="Password (required for create)")
+    lozinka: Optional[str] = Field(None, min_length=6, description="Password (required for password auth, optional for OAuth)")
     role: Role
     nadredeni_vlasnik_id: Optional[int] = None
     modul_ids: List[int] = Field(default_factory=list, description="Module IDs to assign")
+    auth_provider: AuthProvider = Field(default=AuthProvider.PASSWORD, description="Authentication method")
 
     class Config:
         use_enum_values = True
+        
+    @model_validator(mode='after')
+    def validate_password_requirement(self):
+        """Password is required if auth_provider is 'password'"""
+        if self.auth_provider == AuthProvider.PASSWORD and not self.lozinka:
+            raise ValueError("Password is required for password authentication")
+        return self
 
 
 class VlasnikUpdate(BaseModel):
-    """Model for updating Vlasnik - password optional"""
+    """Model for updating Vlasnik"""
     ime: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     lozinka: Optional[str] = Field(None, description="Password (optional, null to keep existing)")
     role: Role
     nadredeni_vlasnik_id: Optional[int] = None
     modul_ids: Optional[List[int]] = Field(None, description="Module IDs to assign (optional)")
+    auth_provider: Optional[AuthProvider] = Field(None, description="Authentication method (optional)")
     
     @field_validator('lozinka')
     @classmethod
