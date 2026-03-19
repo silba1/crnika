@@ -12,8 +12,9 @@ import type {
   AuthUser,
   ZaposlenikObjekt
 } from '../types';
+import logger from '../utils/logger';
 
-const API_BASE_URL = '/api'; // Proxied through Vite
+const API_BASE_URL = '/api';
 
 class ApiService {
   private api: AxiosInstance;
@@ -27,20 +28,19 @@ class ApiService {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
-      withCredentials: false, // ✅ Don't send cookies
+      withCredentials: false,
     });
 
-    // Load saved credentials from localStorage
     const savedEmail = localStorage.getItem('auth_email');
     const savedPassword = localStorage.getItem('auth_password');
-    
-    console.log('🔐 ApiService init - savedEmail:', savedEmail, 'savedPassword:', savedPassword ? '***' : null);
-    
+
+    logger.log('🔐 ApiService init - savedEmail:', savedEmail, 'savedPassword:', savedPassword ? '***' : null);
+
     if (savedEmail && savedPassword) {
       this.setAuth(savedEmail, savedPassword);
-      console.log('✅ ApiService credentials loaded from localStorage');
+      logger.log('✅ ApiService credentials loaded from localStorage');
     } else {
-      console.log('❌ No saved credentials found');
+      logger.log('❌ No saved credentials found');
     }
 
     // Request interceptor - add Basic Auth
@@ -49,14 +49,14 @@ class ApiService {
         if (this.authEmail && this.authPassword) {
           const token = btoa(`${this.authEmail}:${this.authPassword}`);
           config.headers.Authorization = `Basic ${token}`;
-          console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '(authenticated)');
-          console.log('🔐 Auth credentials:', {
+          logger.log('📤 API Request:', config.method?.toUpperCase(), config.url, '(authenticated)');
+          logger.log('🔐 Auth credentials:', {
             email: this.authEmail,
             password: this.authPassword.substring(0, 20) + '...',
             startsWithOauth: this.authPassword.startsWith('oauth_')
           });
         } else {
-          console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '(NO AUTH)');
+          logger.log('📤 API Request:', config.method?.toUpperCase(), config.url, '(NO AUTH)');
         }
         return config;
       },
@@ -68,22 +68,21 @@ class ApiService {
       (response) => response,
       (error: AxiosError) => {
         if (error.response?.status === 401) {
-          console.error('🚨 401 Unauthorized:', error.config?.url);
-          console.error('🚨 Response data:', error.response?.data);
-          console.error('🚨 Current credentials:', {
+          logger.error('🚨 401 Unauthorized:', error.config?.url);
+          logger.error('🚨 Response data:', error.response?.data);
+          logger.error('🚨 Current credentials:', {
             email: this.authEmail,
             hasPassword: !!this.authPassword
           });
-          
-          // Don't redirect if this is the login/OAuth endpoint
+
           const isLoginEndpoint = error.config?.url?.includes('/login') || error.config?.url?.includes('/auth/oauth');
-          
+
           if (!isLoginEndpoint) {
-            console.error('🚨 Clearing auth and redirecting to login');
+            logger.error('🚨 Clearing auth and redirecting to login');
             this.clearAuth();
             window.location.href = '/login';
           } else {
-            console.log('ℹ️ Login endpoint returned 401 - letting LoginPage handle it');
+            logger.log('ℹ️ Login endpoint returned 401 - letting LoginPage handle it');
           }
         }
         return Promise.reject(error);
@@ -91,7 +90,6 @@ class ApiService {
     );
   }
 
-  // Auth methods
   setAuth(email: string, password: string) {
     this.authEmail = email;
     this.authPassword = password;
@@ -110,12 +108,10 @@ class ApiService {
     return !!(this.authEmail && this.authPassword);
   }
 
-  // Login - verify credentials and get user info
   async login(credentials: LoginCredentials): Promise<AuthUser> {
     this.setAuth(credentials.email, credentials.password);
-    
+
     try {
-      // Call /login endpoint (with Basic Auth) - this will log the login event
       const response = await this.api.post<AuthUser>('/login');
       return response.data;
     } catch (error) {
@@ -124,20 +120,17 @@ class ApiService {
     }
   }
 
-  // Google OAuth Login
   async googleOAuthLogin(googleToken: string): Promise<AuthUser> {
     try {
       const response = await this.api.post<AuthUser>('/auth/oauth/google', {
         token: googleToken
       });
-      
-      // For OAuth users, create a session token (email + random session key)
-      // Backend will recognize email and allow access
+
       const user = response.data;
-      const sessionToken = `oauth_${Date.now()}`; // Dummy password for session
-      
+      const sessionToken = `oauth_${Date.now()}`;
+
       this.setAuth(user.email, sessionToken);
-      
+
       return user;
     } catch (error) {
       throw error;
@@ -146,17 +139,14 @@ class ApiService {
 
   async logout() {
     try {
-      // Call /logout endpoint to log the event (before clearing auth)
       await this.api.post('/logout');
     } catch (error) {
-      // Ignore errors (e.g., if already logged out)
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     } finally {
       this.clearAuth();
     }
   }
 
-  // Vlasnici
   async getVlasnici(skip = 0, limit = 100): Promise<Vlasnik[]> {
     const response = await this.api.get<Vlasnik[]>('/vlasnici', {
       params: { skip, limit }
@@ -183,7 +173,6 @@ class ApiService {
     await this.api.delete(`/vlasnici/${id}`);
   }
 
-  // Moduli
   async getModuli(): Promise<Modul[]> {
     const response = await this.api.get<Modul[]>('/moduli');
     return response.data;
@@ -198,7 +187,6 @@ class ApiService {
     await this.api.post(`/vlasnici/${vlasnikId}/moduli`, modulIds);
   }
 
-  // Apartmani
   async getApartmani(skip = 0, limit = 100, vlasnikId?: number): Promise<Apartman[]> {
     const response = await this.api.get<Apartman[]>('/apartmani', {
       params: { skip, limit, vlasnik_id: vlasnikId }
@@ -225,7 +213,6 @@ class ApiService {
     await this.api.delete(`/apartmani/${id}`);
   }
 
-  // Restorani
   async getRestorani(skip = 0, limit = 100, vlasnikId?: number): Promise<Restoran[]> {
     const response = await this.api.get<Restoran[]>('/restorani', {
       params: { skip, limit, vlasnik_id: vlasnikId }
@@ -252,7 +239,6 @@ class ApiService {
     await this.api.delete(`/restorani/${id}`);
   }
 
-  // Gosti
   async getGosti(skip = 0, limit = 100, search?: string): Promise<Gost[]> {
     const response = await this.api.get<Gost[]>('/gosti', {
       params: { skip, limit, search }
@@ -279,7 +265,6 @@ class ApiService {
     await this.api.delete(`/gosti/${id}`);
   }
 
-  // Stolovi Rezervacije
   async getStoloviRezervacije(
     skip = 0,
     limit = 100,
@@ -328,7 +313,6 @@ class ApiService {
     return response.data;
   }
 
-  // Rezervacije (Apartmani)
   async getRezervacije(
     skip = 0,
     limit = 100,
@@ -361,13 +345,11 @@ class ApiService {
     });
   }
 
-  // Statistics
   async getStats(): Promise<Stats> {
     const response = await this.api.get<Stats>('/stats/overview');
     return response.data;
   }
 
-  // Audit Log
   async getAuditLog(
     skip = 0,
     limit = 100,
@@ -385,13 +367,11 @@ class ApiService {
     return response.data;
   }
 
-  // Health check
   async healthCheck(): Promise<{ status: string; database: string }> {
     const response = await this.api.get('/health');
     return response.data;
   }
 
-  // Export/Import
   async exportData(): Promise<any> {
     const response = await this.api.get('/export');
     return response.data;
@@ -431,7 +411,6 @@ class ApiService {
     return response.data;
   }
 
-  // Zaposlenik Objekti (Granular Permissions)
   async getZaposlenikObjekti(zaposlenik_id: number, objekt_type?: string): Promise<ZaposlenikObjekt[]> {
     const params = objekt_type ? { objekt_type } : {};
     const response = await this.api.get(`/zaposlenici/${zaposlenik_id}/objekti`, { params });

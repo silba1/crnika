@@ -68,6 +68,7 @@ export default function VlasniciPage() {
   const [vlasnikToDelete, setVlasnikToDelete] = useState<Vlasnik | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedModuli, setSelectedModuli] = useState<number[]>([]);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   
   // Permissions dialog state
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
@@ -96,7 +97,6 @@ export default function VlasniciPage() {
       setLoading(true);
       setError(null);
       const data = await api.getVlasnici();
-      // Backend already filters based on role
       setVlasnici(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Greška pri učitavanju podataka');
@@ -108,11 +108,9 @@ export default function VlasniciPage() {
   const loadModuli = async () => {
     try {
       if (user?.role === 'admin') {
-        // Admin sees all modules
         const data = await api.getModuli();
         setModuli(data);
       } else if (user?.role === 'vlasnik') {
-        // Vlasnik sees only their modules
         const data = await api.getVlasnikModuli(user.id);
         setModuli(data);
       }
@@ -122,10 +120,10 @@ export default function VlasniciPage() {
   };
 
   const handleOpenDialog = async (vlasnik?: Vlasnik) => {
+    setDialogError(null);
     if (vlasnik) {
       setEditingVlasnik(vlasnik);
       
-      // Fetch vlasnik's modules
       try {
         const vlasnikModuli = await api.getVlasnikModuli(vlasnik.id!);
         const modulIds = vlasnikModuli.map(m => m.id!);
@@ -147,7 +145,6 @@ export default function VlasniciPage() {
       setEditingVlasnik(null);
       setSelectedModuli([]);
       
-      // Auto-set defaults for vlasnik
       const defaultRole = user?.role === 'vlasnik' ? 'zaposlenik' : 'vlasnik';
       const defaultNadredeni = user?.role === 'vlasnik' ? user.id : null;
       
@@ -168,6 +165,7 @@ export default function VlasniciPage() {
     setEditingVlasnik(null);
     setSelectedModuli([]);
     setShowPassword(false);
+    setDialogError(null);
     reset();
   };
 
@@ -182,18 +180,16 @@ export default function VlasniciPage() {
 
   const onSubmit = async (data: VlasnikFormData) => {
     try {
-      setError(null);
+      setDialogError(null);
       
-      // Validate modules for non-admin users
       if (data.role !== 'admin' && selectedModuli.length === 0) {
-        setError('Morate odabrati bar jedan modul');
+        setDialogError('Morate odabrati bar jedan modul');
         return;
       }
       
-      // For vlasnik creating zaposlenik, enforce nadredeni_vlasnik_id
       let finalNadredeni = data.nadredeni_vlasnik_id;
       if (user?.role === 'vlasnik' && data.role === 'zaposlenik') {
-        finalNadredeni = user.id; // Force to current user
+        finalNadredeni = user.id;
       }
       
       const submitData: any = {
@@ -207,27 +203,26 @@ export default function VlasniciPage() {
       };
 
       if (editingVlasnik) {
-        // Update
         if (data.lozinka) {
           submitData.lozinka = data.lozinka;
         }
         await api.updateVlasnik(editingVlasnik.id!, submitData);
         setSuccess('Vlasnik uspješno ažuriran!');
+        handleCloseDialog();
+        loadData();
       } else {
-        // Create - password required
         if (!data.lozinka || data.lozinka.length < 6) {
-          setError('Lozinka je obavezna i mora imati najmanje 6 znakova');
+          setDialogError('Lozinka je obavezna i mora imati najmanje 6 znakova');
           return;
         }
         submitData.lozinka = data.lozinka;
         await api.createVlasnik(submitData);
         setSuccess('Vlasnik uspješno kreiran!');
+        handleCloseDialog();
+        loadData();
       }
-
-      handleCloseDialog();
-      loadData();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Greška pri spremanju');
+      setDialogError(err.response?.data?.detail || 'Greška pri spremanju');
     }
   };
 
@@ -289,7 +284,6 @@ export default function VlasniciPage() {
     );
   }
 
-  // Get vlasnici for nadredeni dropdown
   const potentialNadredeni = vlasnici.filter(v => v.role === 'vlasnik');
 
   return (
@@ -401,6 +395,11 @@ export default function VlasniciPage() {
         <DialogTitle>{editingVlasnik ? 'Uredi vlasnika' : 'Dodaj novog vlasnika'}</DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent>
+            {dialogError && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDialogError(null)}>
+                {dialogError}
+              </Alert>
+            )}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
               <Controller
                 name="ime"
@@ -467,7 +466,6 @@ export default function VlasniciPage() {
                 )}
               />
 
-              {/* Role Field - Admin sees dropdown, Vlasnik sees disabled text */}
               {user?.role === 'admin' ? (
                 <Controller
                   name="role"
@@ -528,14 +526,12 @@ export default function VlasniciPage() {
                 />
               )}
               
-              {/* Vlasnik sees info that zaposlenik will be assigned to them */}
               {watchRole === 'zaposlenik' && user?.role === 'vlasnik' && (
                 <Alert severity="info">
                   Zaposlenik će biti dodijeljen vama kao nadređeni vlasnik
                 </Alert>
               )}
 
-              {/* Module Selector - Only for vlasnik and zaposlenik */}
               {watchRole !== 'admin' && (
                 <FormControl component="fieldset" fullWidth>
                   <FormLabel component="legend">

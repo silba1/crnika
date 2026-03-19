@@ -39,6 +39,7 @@ import { format, differenceInDays } from 'date-fns';
 import api from '../services/api';
 import type { Rezervacija, Apartman, Gost } from '../types';
 import { useAuthStore } from '../store/authStore';
+import logger from '../utils/logger';
 
 interface RezervacijaFormData {
   apartman_id: number;
@@ -63,7 +64,7 @@ export default function RezervacijePage() {
   const [editingRezervacija, setEditingRezervacija] = useState<Rezervacija | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rezervacijaToDelete, setRezervacijaToDelete] = useState<Rezervacija | null>(null);
-  const [dialogError, setDialogError] = useState<string | null>(null);  // Error inside dialog
+  const [dialogError, setDialogError] = useState<string | null>(null);
   
   // Quick add gost
   const [quickAddGostOpen, setQuickAddGostOpen] = useState(false);
@@ -74,7 +75,6 @@ export default function RezervacijePage() {
   const [newGostNapomena, setNewGostNapomena] = useState('');
   const [autocompleteInputValue, setAutocompleteInputValue] = useState('');
   
-  // Filter
   const [filterApartman, setFilterApartman] = useState<number | ''>('');
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<RezervacijaFormData>({
@@ -82,7 +82,7 @@ export default function RezervacijePage() {
       apartman_id: 0,
       gost_id: 0,
       od_datuma: format(new Date(), 'yyyy-MM-dd'),
-      do_datuma: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // +7 days
+      do_datuma: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
       cijena: 0,
       status: 'na_čekanju',
       napomena: '',
@@ -97,11 +97,9 @@ export default function RezervacijePage() {
   }, [filterApartman]);
 
   useEffect(() => {
-    // Auto-calculate price based on dates
     if (odDatumaValue && doDatumaValue) {
       const nights = differenceInDays(new Date(doDatumaValue), new Date(odDatumaValue));
       if (nights > 0) {
-        // Example: 50€ per night (you can make this dynamic based on apartman)
         setValue('cijena', nights * 50);
       }
     }
@@ -111,7 +109,7 @@ export default function RezervacijePage() {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 RezervacijePage: Loading data...');
+      logger.log('🔄 RezervacijePage: Loading data...');
       
       const [rezervacijeData, apartmaniData, gostiData] = await Promise.all([
         api.getRezervacije(0, 100, filterApartman || undefined),
@@ -119,18 +117,17 @@ export default function RezervacijePage() {
         api.getGosti(),
       ]);
       
-      console.log('📦 Loaded data:', {
+      logger.log('📦 Loaded data:', {
         rezervacije: rezervacijeData.length,
         apartmani: apartmaniData.length,
         gosti: gostiData.length
       });
-      console.log('🏠 Apartmani:', apartmaniData);
       
       setRezervacije(rezervacijeData);
       setApartmani(apartmaniData);
       setGosti(gostiData);
     } catch (err: any) {
-      console.error('❌ Error loading data:', err);
+      logger.error('❌ Error loading data:', err);
       setError(err.response?.data?.detail || 'Greška pri učitavanju podataka');
     } finally {
       setLoading(false);
@@ -138,7 +135,7 @@ export default function RezervacijePage() {
   };
 
   const handleOpenDialog = (rezervacija?: Rezervacija) => {
-    console.log('Opening dialog, apartmani count:', apartmani.length, apartmani);
+    logger.log('Opening dialog, apartmani count:', apartmani.length);
     
     if (rezervacija) {
       setEditingRezervacija(rezervacija);
@@ -157,14 +154,14 @@ export default function RezervacijePage() {
       
       reset({
         apartman_id: defaultApartmanId,
-        gost_id: 0,  // Empty - user must select
+        gost_id: 0,
         od_datuma: format(new Date(), 'yyyy-MM-dd'),
         do_datuma: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
         cijena: 350,
         status: 'na_čekanju',
         napomena: '',
       });
-      setAutocompleteInputValue('');  // Clear autocomplete
+      setAutocompleteInputValue('');
     }
     setDialogOpen(true);
   };
@@ -172,17 +169,16 @@ export default function RezervacijePage() {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingRezervacija(null);
-    setDialogError(null);  // Clear dialog error
+    setDialogError(null);
     reset();
   };
 
   const onSubmit = async (data: RezervacijaFormData) => {
     try {
-      setDialogError(null);  // Clear dialog error
+      setDialogError(null);
       
-      // Validate dates
       if (new Date(data.do_datuma) <= new Date(data.od_datuma)) {
-        setDialogError('Datum odlaska mora biti nakon datuma dolaska');  // Show in dialog
+        setDialogError('Datum odlaska mora biti nakon datuma dolaska');
         return;
       }
       
@@ -208,7 +204,7 @@ export default function RezervacijePage() {
       loadData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setDialogError(err.response?.data?.detail || 'Greška pri spremanju rezervacije');  // Show in dialog
+      setDialogError(err.response?.data?.detail || 'Greška pri spremanju rezervacije');
     }
   };
 
@@ -225,15 +221,12 @@ export default function RezervacijePage() {
         napomena: newGostNapomena.trim() || null,
       });
       
-      // Reload gosti
       const gostiData = await api.getGosti();
       setGosti(gostiData);
       
-      // Auto-select new gost
       setValue('gost_id', newGost.id!);
       setAutocompleteInputValue(newGost.naziv);
       
-      // Close dialog and clear form
       setQuickAddGostOpen(false);
       setNewGostNaziv('');
       setNewGostImePrezime('');
@@ -385,12 +378,7 @@ export default function RezervacijePage() {
                           </IconButton>
                         </>
                       )}
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleOpenDialog(rez)} 
-                        color="primary"
-                        sx={{ mr: 1 }}
-                      >
+                      <IconButton size="small" onClick={() => handleOpenDialog(rez)} color="primary" sx={{ mr: 1 }}>
                         <EditIcon />
                       </IconButton>
                       <IconButton size="small" onClick={() => handleDeleteClick(rez)} color="error">
@@ -568,7 +556,9 @@ export default function RezervacijePage() {
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Odustani</Button>
-            <Button type="submit" variant="contained">Dodaj</Button>
+            <Button type="submit" variant="contained">
+              {editingRezervacija ? 'Spremi' : 'Dodaj'}
+            </Button>
           </DialogActions>
         </form>
       </Dialog>
