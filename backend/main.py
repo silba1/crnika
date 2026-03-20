@@ -112,11 +112,11 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)) -> d
         user_dict = dict_from_row(user)
         
         # Debug OAuth
-        print(f"🔐 DEBUG get_current_user:")
-        print(f"   Email: {credentials.username}")
-        print(f"   Password starts with 'oauth_': {credentials.password.startswith('oauth_')}")
-        print(f"   User auth_provider: {user_dict.get('auth_provider')}")
-        print(f"   User oauth_id: {user_dict.get('oauth_id')}")
+        #print(f"🔐 DEBUG get_current_user:")
+        #print(f"   Email: {credentials.username}")
+        #print(f"   Password starts with 'oauth_': {credentials.password.startswith('oauth_')}")
+        #print(f"   User auth_provider: {user_dict.get('auth_provider')}")
+        #print(f"   User oauth_id: {user_dict.get('oauth_id')}")
         
         # Check authentication based on auth_provider
         if user_dict.get('auth_provider') == 'google':
