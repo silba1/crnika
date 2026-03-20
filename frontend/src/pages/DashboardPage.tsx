@@ -118,7 +118,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#1565C0', py: 4 }}>
+    <Container maxWidth="lg" sx={{ mb: 4 }}>
       <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h4" gutterBottom>
           Dobrodošli, {user?.ime}!
@@ -236,5 +237,6 @@ export default function DashboardPage() {
         </Grid>
       </Grid>
     </Container>
+    </Box>
   );
 }
