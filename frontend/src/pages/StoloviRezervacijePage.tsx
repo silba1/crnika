@@ -93,6 +93,25 @@ export default function StoloviRezervacijePage() {
   });
 
   const odVremenaValue = watch('od_vremena');
+  const restoran_idValue = watch('restoran_id');
+
+  const generateTimeSlots = (od: string, do_: string): string[] => {
+    const slots: string[] = [];
+    const [startH, startM] = od.split(':').map(Number);
+    const [endH, endM] = do_.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    for (let m = startMinutes; m < endMinutes; m += 30) {
+      const h = Math.floor(m / 60);
+      const min = m % 60;
+      slots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
+    }
+    return slots;
+  };
+
+  const selectedRestoran = restorani.find(r => r.id === Number(restoran_idValue));
+  const rucakSlots = selectedRestoran ? generateTimeSlots(selectedRestoran.rucak_od, selectedRestoran.rucak_do) : [];
+  const veceraSlots = selectedRestoran ? generateTimeSlots(selectedRestoran.vecera_od, selectedRestoran.vecera_do) : [];
 
   useEffect(() => {
     loadData();
@@ -100,13 +119,13 @@ export default function StoloviRezervacijePage() {
 
   // Auto-set do_vremena to +3h when od_vremena changes
   useEffect(() => {
-    if (odVremenaValue && !editingRezervacija) {  // Only for new reservations
+    if (odVremenaValue) {
       const [hours, minutes] = odVremenaValue.split(':').map(Number);
-      const endHours = (hours + 3) % 24;  // +3 hours, wrap at 24
+      const endHours = (hours + 3) % 24;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
       setValue('do_vremena', endTime);
     }
-  }, [odVremenaValue, editingRezervacija, setValue]);
+  }, [odVremenaValue, setValue]);
 
   const loadData = async () => {
     try {
@@ -504,9 +523,22 @@ export default function StoloviRezervacijePage() {
                 control={control}
                 rules={{ required: 'Vrijeme je obavezno' }}
                 render={({ field }) => (
-                  <Box>
-                    <TextField {...field} label="Vrijeme rezervacije (trajanje 3 sata)" type="time" fullWidth InputLabelProps={{ shrink: true }} />
-                  </Box>
+                  <FormControl fullWidth error={!!errors.od_vremena}>
+                    <InputLabel>Vrijeme rezervacije (trajanje 3 sata)</InputLabel>
+                    <Select {...field} label="Vrijeme rezervacije (trajanje 3 sata)">
+                      {rucakSlots.length > 0 && [
+                        <MenuItem key="rucak-header" disabled sx={{ fontStyle: 'italic', opacity: 0.7 }}>— Ručak —</MenuItem>,
+                        ...rucakSlots.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)
+                      ]}
+                      {veceraSlots.length > 0 && [
+                        <MenuItem key="vecera-header" disabled sx={{ fontStyle: 'italic', opacity: 0.7 }}>— Večera —</MenuItem>,
+                        ...veceraSlots.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)
+                      ]}
+                      {rucakSlots.length === 0 && veceraSlots.length === 0 && (
+                        <MenuItem disabled>Odaberite restoran</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
                 )}
               />
 

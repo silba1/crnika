@@ -24,6 +24,7 @@ baza_prod*.db
 
 # Environment variables
 .env
+.env.*
 .env.local
 env.*
 
